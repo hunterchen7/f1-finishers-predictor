@@ -1,14 +1,29 @@
 import requests
+import csv
 import pandas as pd
+from datetime import datetime
 
-def fetch_precip(lat, lng, date):
+fetched_weather = {}
+today = datetime.today().strftime('%Y-%m-%d')
+
+def within_last_10_days(date):
+    date = datetime.strptime(date, '%Y-%m-%d')
+    today = datetime.today()
+    return (today - date).days < 10
+
+def fetch_weather(lat, lng, date):
+    date = date[1:-1]
+    if date + str(lat) + str(lng) in fetched_weather:
+        return fetched_weather[date + str(lat) + str(lng)]
     try:
+        print('fetching for ' + date + ' ' + str(lat) + ' ' + str(lng))
         data = requests.get(
-        "https://archive-api.open-meteo.com/v1/archive?latitude=" + str(lat) + 
+        ("https://api.open-meteo.com/v1/forecast" if within_last_10_days(date) else
+        "https://archive-api.open-meteo.com/v1/archive?latitude=") + str(lat) + 
         "&longitude=" + str(lng) + "&start_date=" + date + 
-        "&end_date=" + date + "&hourly=precipitation&models=best_match")
-        precip = data.json().precipitation
-        return sum(precip)/len(precip)
+        "&end_date=" + date + "&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,windspeed_10m_max&timezone=America%2FSao_Paulo")
+        fetched_weather[date + str(lat) + str(lng)] = data.json()
+        return data.json()
     except:
         return 0
 
@@ -30,11 +45,35 @@ final_results = {}
 
 curr_results = csv_to_dict('data/results-driver-changes.csv')
 
+
 for line in curr_results.values():
+    circuitId = races[line['raceId']]['circuitId']
+    lat, lng = circuits[circuitId]['lat'], circuits[circuitId]['lng']
+    date = races[line['raceId']]['date']
+    weather = fetch_weather(lat, lng, date)
     if line['raceId'] not in final_results:
-        final_results[line['raceId']] = []
-    
+        final_results[line['raceId']] = {
+            'precipitation_sum': weather['daily']['precipitation_sum'][0],
+            'temperature_2m_max': weather['daily']['temperature_2m_max'][0],
+            'temperature_2m_min': weather['daily']['temperature_2m_min'][0],
+            'temperature_2m_mean': weather['daily']['temperature_2m_mean'][0],
+            'windspeed_10m_max': weather['daily']['windspeed_10m_max'][0],
+            'circuit_id': circuitId,
+            'rookie_drivers': line['rookieDrivers'],
+            'driver_swaps': line['driverSwaps'],
+            'return_drivers': line['returnDrivers'],
+            'month': date.split('-')[1],
+            'finishes': 0,
+        }
+    if line['statusId'] == '1':
+        final_results[line['raceId']]['finishes'] += 1
 
+try:
+    with open('results_processed.csv', 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['precipitation_sum', 'temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'windspeed_10m_max', 'circuit_id', 'rookie_drivers', 'driver_swaps', 'return_drivers', 'month', 'finishes'])
+        writer.writeheader()
+        for data in list(final_results.values()):
+            writer.writerow(data)
+except IOError:
+    print("I/O error")
 
-
-print(fetch_precip(circuits['5']['lat'], circuits['5']['lng'], "2009-03-29"))
