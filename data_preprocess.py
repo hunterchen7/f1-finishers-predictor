@@ -16,7 +16,7 @@ def fetch_weather(lat, lng, date):
     if date + str(lat) + str(lng) in fetched_weather:
         return fetched_weather[date + str(lat) + str(lng)]
     try:
-        print('fetching for ' + date + ' ' + str(lat) + ' ' + str(lng))
+        print('fetching weather for ' + date + ', lat: ' + str(lat) + ', lng: ' + str(lng))
         data = requests.get(
         ("https://api.open-meteo.com/v1/forecast" if within_last_10_days(date) else
         "https://archive-api.open-meteo.com/v1/archive?latitude=") + str(lat) + 
@@ -62,15 +62,15 @@ for line in curr_results.values():
             'rookie_drivers': line['rookieDrivers'],
             'driver_swaps': line['driverSwaps'],
             'return_drivers': line['returnDrivers'],
-            'month': date.split('-')[1],
-            'finishes': 0,
+            'month': int(date.split('-')[1]),
+            'results': 0,
         }
-    if line['statusId'] == '1':
-        final_results[line['raceId']]['finishes'] += 1
+    if line['statusId'] in ['1', '11', '12', '13', '14', '15', '16', '17', '18', '19']:#['3', '4']:
+        final_results[line['raceId']]['results'] += 1
 
 try:
     with open('results_processed.csv', 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['precipitation_sum', 'temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'windspeed_10m_max', 'circuit_id', 'rookie_drivers', 'driver_swaps', 'return_drivers', 'month', 'finishes'])
+        writer = csv.DictWriter(f, fieldnames=['precipitation_sum', 'temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'windspeed_10m_max', 'circuit_id', 'rookie_drivers', 'driver_swaps', 'return_drivers', 'month', 'results'])
         writer.writeheader()
         for data in list(final_results.values()):
             writer.writerow(data)

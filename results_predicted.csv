@@ -1,4 +1,4 @@
-precipitation_sum,temperature_2m_max,temperature_2m_min,temperature_2m_mean,windspeed_10m_max,circuit_id,rookie_drivers,driver_swaps,return_drivers,month,results
+precipitation_sum,temperature_2m_max,temperature_2m_min,temperature_2m_mean,windspeed_10m_max,circuit_id,rookie_drivers,driver_swaps,return_drivers,month,finishes
 5.5,22.7,10.6,15.4,30.4,1,2,0,0,3,15
 0.3,24.8,22.3,23.9,21.6,3,2,0,0,4,17
 0.0,18.8,6.7,12.6,13.6,17,2,0,0,4,19
