@@ -1,6 +1,6 @@
 import csv
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
 
@@ -20,14 +20,17 @@ X_train, X_test, y_train, y_test = train_test_split(source, target, test_size=0.
 rf.fit(X_train, y_train)
 y_pred = rf.predict(X_test)
 
-xgb_model = xgb.XGBClassifier(objective="binary:logistic")
+xgb_model = xgb.XGBClassifier(objective="multi:softprob" if len(set(target)) > 2 else "binary:logistic")
 xgb_model.fit(X_train, y_train)
 y_pred_xgb = xgb_model.predict(X_test)
 
 '''for i,j in zip(y_test, y_pred):
   print(i,j)'''
 print("Accuracy :", accuracy_score(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))
+
 print("Accuracy XGB:", accuracy_score(y_test, y_pred_xgb))
+print(confusion_matrix(y_test, y_pred_xgb))
 
 rf.fit(source, target)
 

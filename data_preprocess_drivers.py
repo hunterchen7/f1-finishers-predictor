@@ -79,6 +79,7 @@ for i,line in enumerate(curr_results.values()):
         'constructor': line['constructorId'],
         'driver_count': 0,
         'results': 1 if line['statusId'] in ['1', '11', '12', '13', '14', '15', '16', '17', '18', '19'] else 0 #['3', '4'] for collisions/accidents
+        #'results': 0 if line['positionText'][1:-1] in {'R', 'D', 'W'} or int(line['positionText'][1:-1]) > 3 else int(line['positionText'][1:-1])
     }
 
 driver_count = {}
