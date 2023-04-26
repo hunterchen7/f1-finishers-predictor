@@ -3,7 +3,18 @@ import csv
 import pandas as pd
 from datetime import datetime
 
-fetched_weather = {}
+def csv_to_dict(filename):
+    with open(filename) as f:
+        csv_list = [[val.strip() for val in r.split(",")] for r in f.readlines()]
+
+    (_, *header), *data = csv_list
+    csv_dict = {}
+    for row in data:
+        key, *values = row
+        csv_dict[key] = {key: value for key, value in zip(header, values)}
+    return csv_dict
+
+fetched_weather = csv_to_dict('data/fetched_weather.csv')
 today = datetime.today().strftime('%Y-%m-%d')
 
 def within_last_10_days(date):
@@ -22,55 +33,51 @@ def fetch_weather(lat, lng, date):
         "https://archive-api.open-meteo.com/v1/archive?latitude=") + str(lat) + 
         "&longitude=" + str(lng) + "&start_date=" + date + 
         "&end_date=" + date + "&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,windspeed_10m_max&timezone=America%2FSao_Paulo")
-        fetched_weather[date + str(lat) + str(lng)] = data.json()
-        return data.json()
+        fetched_weather[date + str(lat) + str(lng)] = data.json()['daily']
+        with open('data/fetched_weather.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([date + str(lat) + str(lng)] + [x[0] for x in list(data.json()['daily'].values())[1:]])
+        return data.json()['daily']
     except:
         return 0
 
-def csv_to_dict(filename):
-    with open(filename) as f:
-        csv_list = [[val.strip() for val in r.split(",")] for r in f.readlines()]
-
-    (_, *header), *data = csv_list
-    csv_dict = {}
-    for row in data:
-        key, *values = row
-        csv_dict[key] = {key: value for key, value in zip(header, values)}
-    return csv_dict
 
 circuits = csv_to_dict('data/circuits.csv') # used to fetch lat and lng for race
 races = csv_to_dict('data/races.csv') # used to fetch date
 
 final_results = {}
 
-curr_results = csv_to_dict('data/results-driver-changes.csv')
+curr_results = csv_to_dict('data/results.csv')
 
 
 for line in curr_results.values():
     circuitId = races[line['raceId']]['circuitId']
     lat, lng = circuits[circuitId]['lat'], circuits[circuitId]['lng']
     date = races[line['raceId']]['date']
+    if int(date.split('-')[0][1:]) < 2000:
+        continue
     weather = fetch_weather(lat, lng, date)
     if line['raceId'] not in final_results:
         final_results[line['raceId']] = {
-            'precipitation_sum': weather['daily']['precipitation_sum'][0],
-            'temperature_2m_max': weather['daily']['temperature_2m_max'][0],
-            'temperature_2m_min': weather['daily']['temperature_2m_min'][0],
-            'temperature_2m_mean': weather['daily']['temperature_2m_mean'][0],
-            'windspeed_10m_max': weather['daily']['windspeed_10m_max'][0],
+            #'raceId': line['raceId'],
+            'precipitation_sum': weather['precipitation_sum'],
+            'temperature_2m_max': weather['temperature_2m_max'],
+            'temperature_2m_min': weather['temperature_2m_min'],
+            'temperature_2m_mean': weather['temperature_2m_mean'],
+            'windspeed_10m_max': weather['windspeed_10m_max'],
             'circuit_id': circuitId,
-            'rookie_drivers': line['rookieDrivers'],
-            'driver_swaps': line['driverSwaps'],
-            'return_drivers': line['returnDrivers'],
+            'year': int(date.split('-')[0][1:]),
             'month': int(date.split('-')[1]),
+            'driver_count': 0,
             'results': 0,
         }
-    if line['statusId'] in ['1', '11', '12', '13', '14', '15', '16', '17', '18', '19']:#['3', '4']:
+    if line['statusId'] in ['3', '4']:#['1', '11', '12', '13', '14', '15', '16', '17', '18', '19']:
         final_results[line['raceId']]['results'] += 1
+    final_results[line['raceId']]['driver_count'] += 1
 
 try:
-    with open('results_processed.csv', 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['precipitation_sum', 'temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'windspeed_10m_max', 'circuit_id', 'rookie_drivers', 'driver_swaps', 'return_drivers', 'month', 'results'])
+    with open('results_processed_accidents.csv', 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=list(final_results.values())[0].keys())
         writer.writeheader()
         for data in list(final_results.values()):
             writer.writerow(data)
